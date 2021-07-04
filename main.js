@@ -1,10 +1,17 @@
 const SHA256 = require('crypto-js/sha256');
 
+class Transaction {
+  constructor(fromAddress, toAddress, amount){
+    this.fromAddress = fromAddress;
+    this.toAddress = toAddress;
+    this.amount = amount;
+  }
+}
+
 class Block {
-  constructor(index, timestamp, data, previousHash = ''){
-    this.index = index;
+  constructor(timestamp, transactions, previousHash = ''){
     this.timestamp = timestamp;
-    this.data = data;
+    this.transactions = transactions;
     this.previousHash = previousHash;
     this.hash = this.calculateHash();
     this.nonce = 0;
@@ -15,6 +22,7 @@ class Block {
     return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data) + this.nonce).toString();
   }
 
+  // Proof of Work
   mineBlock(difficulty){
     while(this.hash.substring(0, difficulty) !== Array(difficulty + 1).join('0')){
       this.nonce++;
@@ -25,28 +33,54 @@ class Block {
   }  
 }
 
-
-
 class Blockchain {
   constructor(){
     this.chain = [this.createGenesisBlock()];
-    this.difficulty = 4;
+    this.difficulty = 2;
+    this.pendingTransactions = [];
+    this.miningReward = 100;
   }
 
   createGenesisBlock(){
-    return new Block(0, '01/01/2021', 'Genesis blcok', '0');
+    return new Block('01/01/2021', 'Genesis blcok', '0');
   }
 
   getLatestblock(){
     return this.chain[this.chain.length - 1];
   }
 
-  addBlock(newBlock){
-    newBlock.previousHash = this.getLatestblock().hash;
-    newBlock.mineBlock(this.difficulty);
-    // newBlock.hash = newBlock.calculateHash();
-    // previous line removed to implement mine
-    this.chain.push(newBlock);
+  minePendingTransactions(miningRewardAddress){
+    let block = new Block(Date.now(), this.pendingTransactions);
+    block.mineBlock(this.difficulty);
+
+    console.log('Block successfully mined!');
+    this.chain.push(block);
+
+    this.pendingTransactions = [
+      new Transaction(null, miningRewardAddress, this.miningReward)
+    ];
+  }
+
+  createTransaction(transaction){
+    this.pendingTransactions.push(transaction);
+  }
+
+  getBalanceOfAddress(address){
+    let balance = 0;
+
+    for(const block of this.chain){
+      for(const trans of block.transactions){
+        if(trans.fromAddress === address){
+          balance -= trans.amount;
+        }
+  
+        if(trans.toAddress === address){
+          balance += trans.amount;
+        }
+      }
+    }
+
+    return balance;
   }
 
   isChainValid(){
@@ -69,24 +103,15 @@ class Blockchain {
 
 // Create instance of the Blockchain
 let satCoin = new Blockchain();
+satCoin.createTransaction(new Transaction('address1', 'address2', 100));
+satCoin.createTransaction(new Transaction('address2', 'address1', 50));
 
-// Create new blocks
-console.log('Mining block 1...')
-satCoin.addBlock(new Block(1, '10/01/2021', { amount: 4}));
+console.log('\n Starting the miner...');
+satCoin.minePendingTransactions('xaviers-address');
 
-console.log('Mining block 2...')
-satCoin.addBlock(new Block(2, '12/01/2021', { amount: 10}));
+console.log('\nBalance of xavier is', satCoin.getBalanceOfAddress('xaviers-address'));
 
+console.log('\n Starting the miner again...');
+satCoin.minePendingTransactions('xaviers-address');
 
-// ALL BELOW: from Part 1 of tutorial
-// console.log('This is the stringified satCoin at the end: ' + JSON.stringify(satCoin, null, 4));
-
-// Check if blockchain is valid
-// console.log('Is blockchain valid: ' + satCoin.isChainValid());
-
-// Tamper with blockchain test
-// satCoin.chain[1].data = {amoun : 100};
-// satCoin.chain[1].hash = satCoin.chain[1].calculateHash();
-
-// Re-Check if blockchain is valid after tampering
-// console.log('Is blockchain valid: ' + satCoin.isChainValid());
+console.log('\nBalance of xavier is', satCoin.getBalanceOfAddress('xaviers-address'));
