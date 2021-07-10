@@ -1,6 +1,8 @@
 #Files to ignore
 .env
 .DS_Store
+pseudocode-outline
+misc.js
 
 #Folders to ignore
 /node_modules
